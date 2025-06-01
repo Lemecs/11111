@@ -1,8 +1,10 @@
-#include "maze.h"
+п»ї#include "maze.h"
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <time.h>
 
-// Глобальные переменные из maze.h
+// Р“Р»РѕР±Р°Р»СЊРЅС‹Рµ РїРµСЂРµРјРµРЅРЅС‹Рµ РёР· maze.h:
 int mazeWidth, mazeHeight;
 char** maze = NULL;
 int playerX, playerY;
@@ -11,44 +13,40 @@ int finishX, finishY;
 
 /**
  * initMaze:
- *   1) Записывает mazeWidth=width, mazeHeight=height.
- *   2) Выделяет память под maze: массив указателей на строки, а потом сами строки.
- *   3) Заполняет всё символом '#'.
- *   4) Устанавливает стартовую клетку в (1,1) как проход, а finish пока не устанавливаем —
- *      это сделаем в main.c (после generateMaze).
+ *   1) Р—Р°РїРёСЃС‹РІР°РµС‚ mazeWidth=width, mazeHeight=height.
+ *   2) Р’С‹РґРµР»СЏРµС‚ РїР°РјСЏС‚СЊ РїРѕРґ maze: РјР°СЃСЃРёРІ СЃС‚СЂРѕРє [mazeHeight][mazeWidth].
+ *   3) Р—Р°РїРѕР»РЅСЏРµС‚ РєР°Р¶РґС‹Р№ СЃРёРјРІРѕР» '#'.
  */
 void initMaze(int width, int height) {
     mazeWidth = width;
     mazeHeight = height;
 
-    // Освобождаем старую память (если вдруг она уже была выделена).
+    // Р•СЃР»Рё СЂР°РЅРµРµ СѓР¶Рµ Р±С‹Р» РІС‹РґРµР»РµРЅ maze, С‚Рѕ РѕС‡РёС‰Р°РµРј РµРіРѕ:
     if (maze) {
         freeMaze();
     }
 
-    // Выделяем массив указателей на строки:
+    // Р’С‹РґРµР»СЏРµРј РјР°СЃСЃРёРІ СѓРєР°Р·Р°С‚РµР»РµР№ РЅР° СЃС‚СЂРѕРєРё:
     maze = (char**)malloc(sizeof(char*) * mazeHeight);
     if (!maze) {
-        fprintf(stderr, "[initMaze] Ошибка malloc(mazeHeight)\n");
+        fprintf(stderr, "[initMaze] malloc failed for maze rows\n");
         exit(1);
     }
 
-    // Выделяем каждую строку и заполняем '#':
+    // Р”Р»СЏ РєР°Р¶РґРѕР№ СЃС‚СЂРѕРєРё РІС‹РґРµР»СЏРµРј РїР°РјСЏС‚СЊ Рё Р·Р°РїРѕР»РЅСЏРµРј '#'
     for (int y = 0; y < mazeHeight; y++) {
         maze[y] = (char*)malloc(sizeof(char) * mazeWidth);
         if (!maze[y]) {
-            fprintf(stderr, "[initMaze] Ошибка malloc(maze[%d])\n", y);
+            fprintf(stderr, "[initMaze] malloc failed for maze[%d]\n", y);
             exit(1);
         }
-        for (int x = 0; x < mazeWidth; x++) {
-            maze[y][x] = '#';
-        }
+        memset(maze[y], '#', mazeWidth);
     }
 }
 
 /**
  * shuffle:
- *   Стандартный Fisher–Yates: перемешать массив array длины n.
+ *   РџРµСЂРµРјРµС€РёРІР°РµС‚ int-РјР°СЃСЃРёРІ РґР»РёРЅС‹ n (Р°Р»РіРѕСЂРёС‚Рј FisherвЂ“Yates).
  */
 void shuffle(int* array, int n) {
     for (int i = 0; i < n - 1; i++) {
@@ -61,39 +59,129 @@ void shuffle(int* array, int n) {
 
 /**
  * generateMaze:
- *   Рекурсивно «прокладывает» проходы в лабиринте.
- *   Берёт текущие координаты (x, y) — считается, что maze[y][x] уже = ' '.
- *   Строит деревянные «мостики» (двигаясь по 2 клетки за раз), пока не выйдет «из массива».
+ *   Р РµРєСѓСЂСЃРёРІРЅРѕ В«РїСЂРѕРєР»Р°РґС‹РІР°РµС‚В» РєРѕСЂРёРґРѕСЂС‹.
+ *   РџСЂРµРґРїРѕР»Р°РіР°РµС‚СЃСЏ, С‡С‚Рѕ maze[y][x] СѓР¶Рµ = ' ' (РїСЂРѕС…РѕРґ).
  */
 void generateMaze(int x, int y) {
-    // Массив из четырёх направлений: 0 = вниз, 1 = вверх, 2 = вправо, 3 = влево
     int dirs[4] = { 0, 1, 2, 3 };
     shuffle(dirs, 4);
 
     for (int i = 0; i < 4; i++) {
         int dx = 0, dy = 0;
         switch (dirs[i]) {
-        case 0: dy = 2; break;
-        case 1: dy = -2; break;
-        case 2: dx = 2; break;
-        case 3: dx = -2; break;
+        case 0: dy = 2;  break; // РІРЅРёР·
+        case 1: dy = -2; break; // РІРІРµСЂС…
+        case 2: dx = 2;  break; // РІРїСЂР°РІРѕ
+        case 3: dx = -2; break; // РІР»РµРІРѕ
         }
         int nx = x + dx;
         int ny = y + dy;
-        // Проверяем, что (nx,ny) в пределах и это всё ещё стена:
-        if (nx > 0 && nx < mazeWidth - 1 && ny > 0 && ny < mazeHeight - 1 && maze[ny][nx] == '#') {
-            // Пробиваем «коридор» между (x,y) и (nx,ny):
+        // РџСЂРѕРІРµСЂСЏРµРј, С‡С‚Рѕ (nx, ny) РІ РїСЂРµРґРµР»Р°С… Рё С‚Р°Рј СЃС‚РµРЅР°:
+        if (nx > 0 && nx < mazeWidth - 1 &&
+            ny > 0 && ny < mazeHeight - 1 &&
+            maze[ny][nx] == '#')
+        {
+            // РџСЂРѕР±РёРІР°РµРј СЃС‚РµРЅСѓ РјРµР¶РґСѓ (x,y) Рё (nx,ny):
             maze[y + dy / 2][x + dx / 2] = ' ';
             maze[ny][nx] = ' ';
-            // Рекурсивно углубляемся:
+            // Р РµРєСѓСЂСЃРёРІРЅРѕ РїСЂРѕРґРѕР»Р¶Р°РµРј
             generateMaze(nx, ny);
         }
     }
 }
 
 /**
+ * findFarthestCell:
+ *   РР· СЃС‚Р°СЂС‚РѕРІРѕР№ РєР»РµС‚РєРё (sx,sy) РІС‹РїРѕР»РЅСЏРµС‚ BFS РїРѕ РІСЃРµРјСѓ Р»Р°Р±РёСЂРёРЅС‚Сѓ,
+ *   РІРѕР·РІСЂР°С‰Р°СЏ РєРѕРѕСЂРґРёРЅР°С‚С‹ РєР»РµС‚РєРё, РЅР°РёР±РѕР»РµРµ СѓРґР°Р»С‘РЅРЅРѕР№ (РјР°РєСЃ. СЂР°СЃСЃС‚РѕСЏРЅРёРµ).
+ */
+void findFarthestCell(int sx, int sy, int* outX, int* outY) {
+    int h = mazeHeight;
+    int w = mazeWidth;
+    // РЎРѕР·РґР°С‘Рј 2DвЂ‘РјР°СЃСЃРёРІ dist[h][w], РёРЅРёС†РёР°Р»РёР·РёСЂСѓРµРј -1:
+    int** dist = (int**)malloc(sizeof(int*) * h);
+    if (!dist) {
+        fprintf(stderr, "[findFarthestCell] malloc failed for dist pointers\n");
+        exit(1);
+    }
+    for (int i = 0; i < h; i++) {
+        dist[i] = (int*)malloc(sizeof(int) * w);
+        if (!dist[i]) {
+            fprintf(stderr, "[findFarthestCell] malloc failed for dist[%d]\n", i);
+            exit(1);
+        }
+        for (int j = 0; j < w; j++) {
+            dist[i][j] = -1;
+        }
+    }
+
+    // РћС‡РµСЂРµРґСЊ (qx, qy) СЂР°Р·РјРµСЂР° РЅРµ РјРµРЅРµРµ h*w
+    int total = h * w;
+    int* qx = (int*)malloc(sizeof(int) * total);
+    int* qy = (int*)malloc(sizeof(int) * total);
+    if (!qx || !qy) {
+        fprintf(stderr, "[findFarthestCell] malloc failed for queue\n");
+        exit(1);
+    }
+
+    int head = 0, tail = 0;
+    // Р—Р°РїСѓСЃРєР°РµРј BFS РёР· (sx,sy)
+    dist[sy][sx] = 0;
+    qx[tail] = sx;
+    qy[tail] = sy;
+    tail++;
+
+    int bestX = sx, bestY = sy;
+    int maxD = 0;
+
+    // РЎРјРµС‰РµРЅРёСЏ РїРѕ 4 СЃРѕСЃРµРґСЏРј
+    const int ddx[4] = { 1, -1,  0,  0 };
+    const int ddy[4] = { 0,  0,  1, -1 };
+
+    while (head < tail) {
+        int cx = qx[head];
+        int cy = qy[head];
+        int cd = dist[cy][cx];
+        head++;
+
+        // РћР±РЅРѕРІР»СЏРµРј В«РјР°РєСЃРёРјСѓРјВ»
+        if (cd > maxD) {
+            maxD = cd;
+            bestX = cx;
+            bestY = cy;
+        }
+
+        // РџСЂРѕСЃРјР°С‚СЂРёРІР°РµРј 4 СЃРѕСЃРµРґР°
+        for (int k = 0; k < 4; k++) {
+            int nx = cx + ddx[k];
+            int ny = cy + ddy[k];
+            if (nx >= 0 && nx < w && ny >= 0 && ny < h) {
+                if (maze[ny][nx] == ' ' && dist[ny][nx] < 0) {
+                    dist[ny][nx] = cd + 1;
+                    qx[tail] = nx;
+                    qy[tail] = ny;
+                    tail++;
+                }
+            }
+        }
+    }
+
+    // Р’РѕР·РІСЂР°С‰Р°РµРј РЅР°Р№РґРµРЅРЅСѓСЋ СЃР°РјСѓСЋ СѓРґР°Р»С‘РЅРЅСѓСЋ С‚РѕС‡РєСѓ
+    *outX = bestX;
+    *outY = bestY;
+
+    // РћСЃРІРѕР±РѕР¶РґР°РµРј РїР°РјСЏС‚СЊ
+    for (int i = 0; i < h; i++) {
+        free(dist[i]);
+    }
+    free(dist);
+    free(qx);
+    free(qy);
+}
+
+/**
  * freeMaze:
- *   Освобождает всю память, занятую «maze» (сначала все строки, потом сам массив указателей).
+ *   РћСЃРІРѕР±РѕР¶РґР°РµС‚ РІСЃСЋ РїР°РјСЏС‚СЊ, Р·Р°РЅСЏС‚СѓСЋ maze.
  */
 void freeMaze(void) {
     if (!maze) return;
@@ -103,5 +191,4 @@ void freeMaze(void) {
     free(maze);
     maze = NULL;
     mazeWidth = mazeHeight = 0;
-    // playerX/Y, startX/Y, finishX/Y мы просто оставляем, но новые уровни их перезапишут.
 }
